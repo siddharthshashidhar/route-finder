@@ -5,10 +5,10 @@ from scipy.ndimage import uniform_filter1d
 
 def read_gpx_file(file_path):
     with open (file_path) as f:
-        gpx=gpx.parse(f)
+        gpx_d=gpx.parse(f)
 
     points=[]
-    for track in gpx.tracks:
+    for track in gpx_d.tracks:
         for segment in track.segments:
             for point in segment.points:
                 points.append((point.latitude, point.longitude, point.elevation, point.time))
@@ -33,44 +33,50 @@ def route_build(points):
 
     return grid, elevation_resampled, total_distance
 
+def find_segments(grid, elev, min_gradient=0.03, min_length=100,direction="up"):
+    gradients=np.gradient(elev,grid)
+
+    sign=1 if direction=="up" else -1
+    threshold=sign*min_gradient
+
+    start_id=None
+    in_climb=False
+    segments=[]
+
+    def close_segment(end_id):
+        length=grid[end_id]-grid[start_id]
+        if length>=min_length:
+                gain = elev[end_id] - elev[start_id]
+                segments.append({
+                    "type": direction,
+                    "start": round(grid[start_id] / 1000, 2),
+                    "end": round(grid[end_id] / 1000, 2),
+                    "elevation_change_m": round(gain, 1),
+                    "gradient_pct": round((gain / length) * 100, 1),
+                    })
+
+
+                
+        for i, g in enumerate(gradients):
+            crossed = (g >= threshold) if direction == "climb" else (g <= threshold)
+            if crossed and not in_segment:
+                in_segment = True
+                start_id = i
+            elif not crossed and in_segment:
+                in_segment = False
+                close_segment(i)
+
+
+        if in_segment:
+            close_segment(len(grid) - 1)
+
+        return segments
 
 def hill_finding(grid,elev,min_gradient=0.03, min_length=100):
-    gradients=np.gradient(elev, grid)
+    climbs = find_segments(grid, elev, min_gradient, min_length, direction="up")
+    descents = find_segments(grid, elev, min_gradient, min_length, direction="down")
+    return sorted(climbs + descents, key=lambda s: s["start"])
 
-    segments=[]
-    in_climb=False
-    start_id=None
-
-    for i,g in enumerate(gradients):
-        if g>=min_gradient:
-            if not in_climb:
-                in_climb=True
-                start_id=i
-        elif g<min_gradient and in_climb:
-            in_climb=False
-            length=grid[i]-grid[start_id]
-            if length>=min_length:
-                gain=elev[i]-elev[start_id]
-                segments.append({
-                    "start":round(grid[start_id]/1000,2),
-                    "end":round(grid[i]/1000,2),
-                    "gain":round(gain,1),
-                    "gradient %":round((gain/length)*100,1)
-                })
-
-    if in_climb:
-        length=grid[-1]-grid[start_id]
-        if length>=min_length:
-            gain=elev[-1]-elev[start_id]
-            segments.append({
-                "start":round(grid[start_id]/1000,2),
-                "end":round(grid[-1]/1000,2),
-                "gain":round(gain,1),
-                "gradient %":round((gain/length)*100,1)
-            })
-
-
-    return segments
 
 
 
