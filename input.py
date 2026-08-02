@@ -33,44 +33,41 @@ def route_build(points):
 
     return grid, elevation_resampled, total_distance
 
-def find_segments(grid, elev, min_gradient=0.03, min_length=100,direction="up"):
-    gradients=np.gradient(elev,grid)
+def find_segments(grid, elev, min_gradient=0.03, min_length=100, direction="up"):
+    gradients = np.gradient(elev, grid)
 
-    sign=1 if direction=="up" else -1
-    threshold=sign*min_gradient
+    sign = 1 if direction == "up" else -1
+    threshold = sign * min_gradient
 
-    start_id=None
-    in_climb=False
-    segments=[]
+    start_id = None
+    in_segment = False
+    segments = []
 
     def close_segment(end_id):
-        length=grid[end_id]-grid[start_id]
-        if length>=min_length:
-                gain = elev[end_id] - elev[start_id]
-                segments.append({
-                    "type": direction,
-                    "start": round(grid[start_id] / 1000, 2),
-                    "end": round(grid[end_id] / 1000, 2),
-                    "elevation_change_m": round(gain, 1),
-                    "gradient_pct": round((gain / length) * 100, 1),
-                    })
+        length = grid[end_id] - grid[start_id]
+        if length >= min_length:
+            gain = elev[end_id] - elev[start_id]
+            segments.append({
+                "type": direction,
+                "start": float(round(grid[start_id] / 1000, 2)),
+                "end": float(round(grid[end_id] / 1000, 2)),
+                "elevation_change_m": float(round(gain, 1)),
+                "gradient_pct": float(round((gain / length) * 100, 1)),
+            })
 
+    for i, g in enumerate(gradients):
+        crossed = (g >= threshold) if direction == "up" else (g <= threshold)
+        if crossed and not in_segment:
+            in_segment = True
+            start_id = i
+        elif not crossed and in_segment:
+            in_segment = False
+            close_segment(i)
 
-                
-        for i, g in enumerate(gradients):
-            crossed = (g >= threshold) if direction == "climb" else (g <= threshold)
-            if crossed and not in_segment:
-                in_segment = True
-                start_id = i
-            elif not crossed and in_segment:
-                in_segment = False
-                close_segment(i)
+    if in_segment:
+        close_segment(len(grid) - 1)
 
-
-        if in_segment:
-            close_segment(len(grid) - 1)
-
-        return segments
+    return segments
 
 def hill_finding(grid,elev,min_gradient=0.03, min_length=100):
     climbs = find_segments(grid, elev, min_gradient, min_length, direction="up")
@@ -79,4 +76,11 @@ def hill_finding(grid,elev,min_gradient=0.03, min_length=100):
 
 
 
+points = read_gpx_file("Morning_Run.gpx")
+grid, elev, total_dist = route_build(points)
+hills = hill_finding(grid, elev)
 
+print(f"Total distance: {total_dist/1000:.2f} km")
+print(f"Found {len(hills)} climb/descent segments:")
+for h in hills:
+    print(h)
