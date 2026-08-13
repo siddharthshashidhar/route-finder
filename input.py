@@ -75,12 +75,70 @@ def hill_finding(grid,elev,min_gradient=0.03, min_length=100):
     return sorted(climbs + descents, key=lambda s: s["start"])
 
 
+def build_fingerprint(points):
+    grid, elev, total_dist = route_build(points)
+    climbs = find_segments(grid, elev, direction="up")
+    descents = find_segments(grid, elev, direction="down")
 
-points = read_gpx_file("Morning_Run.gpx")
-grid, elev, total_dist = route_build(points)
-hills = hill_finding(grid, elev)
+    total_gain = sum(s["elevation_change_m"] for s in climbs)
+    total_loss = sum(abs(s["elevation_change_m"]) for s in descents)
 
-print(f"Total distance: {total_dist/1000:.2f} km")
-print(f"Found {len(hills)} climb/descent segments:")
-for h in hills:
-    print(h)
+    # normalize elevation profile to a fixed length (100 points, 0-100% of distance)
+    # so routes of different lengths can still be compared by shape
+    norm_positions = np.linspace(0, 1, 100)
+    actual_positions = grid / total_dist
+    normalized_elev = np.interp(norm_positions, actual_positions, elev)
+
+    return {
+        "total_distance_km": round(total_dist / 1000, 2),
+        "total_gain_m": round(total_gain, 1),
+        "total_loss_m": round(total_loss, 1),
+        "elevation_profile": normalized_elev.tolist(),
+        "climb_segments": climbs,
+        "descent_segments": descents,
+        "start_lat": points[0][0],
+        "start_lon": points[0][1],
+    }
+
+
+
+def classify_route_shape(points, tolerance_km=0.3):
+    """Guess whether a route is a loop, out-and-back, or point-to-point."""
+    start = points[0][:2]
+    end = points[-1][:2]
+    start_end_dist_km = geodesic(start, end).km
+
+    if start_end_dist_km > tolerance_km:
+        return "point_to_point"
+
+    # start ≈ end — now check if it's a loop or an out-and-back.
+    # Out-and-back: the outbound half and return half retrace the same roads.
+    mid = len(points) // 2
+    outbound = points[:mid]
+    inbound = points[mid:][::-1]  # reverse so it lines up direction-wise
+
+    # sample a few matching points and check how close they are geographically
+    sample_idxs = range(0, min(len(outbound), len(inbound)), max(1, mid // 10))
+    diffs = [
+        geodesic(outbound[i][:2], inbound[i][:2]).km
+        for i in sample_idxs
+    ]
+    avg_diff = sum(diffs) / len(diffs)
+
+    return "out_and_back" if avg_diff < tolerance_km else "loop"
+
+
+
+
+if __name__ == "__main__":
+    points = read_gpx_file("Morning_Run.gpx")
+    fp = build_fingerprint(points)
+    print(f"Distance: {fp['total_distance_km']} km")
+    print(f"Total gain: {fp['total_gain_m']}m, Total loss: {fp['total_loss_m']}m")
+    print("\nClimbs:")
+    for c in fp["climb_segments"]:
+        print(c)
+    print("\nDescents:")
+    for d in fp["descent_segments"]:
+        print(d)
+    print(classify_route_shape(points))

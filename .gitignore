@@ -1,0 +1,7 @@
+.env
+cache/
+.venv/
+__pycache__/
+*.pyc
+best_match.gpx
+comparison.png
