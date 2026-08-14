@@ -3,7 +3,11 @@ import os
 
 load_dotenv()
 
-API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+try:
+    import streamlit as st
+    API_KEY = st.secrets.get("GOOGLE_MAPS_API_KEY", os.getenv("GOOGLE_MAPS_API_KEY"))
+except Exception:
+    API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 
 if not API_KEY:
     raise ValueError(

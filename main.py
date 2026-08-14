@@ -11,13 +11,13 @@ from plot import plot_comparison
 
 
 # 1. Build fingerprint from your uploaded route
-uploaded_points = read_gpx_file("Morning_Run3.gpx")
+uploaded_points = read_gpx_file("Bengaluru_10k_Challenge_2026.gpx")
 target_fp = build_fingerprint(uploaded_points)
 shape=classify_route_shape(uploaded_points)
 print(f"Target route: {target_fp['total_distance_km']} km, gain {target_fp['total_gain_m']}m, shape {shape}")
 
 # 2. Generate candidates near a location
-center = (12.922622343843708, 77.51939437954685)
+center = (12.915778531769693, 77.51329963721815)
 n_bearings = 4
 
 if shape=="out_and_back":
@@ -30,7 +30,7 @@ else:
 candidates = load_cached_candidates(center[0], center[1], distance_param, n_bearings)
 
 if candidates is None:
-    print("No cache found — calling Google APIs...(mode={mode})")
+    print(f"No cache found — calling Google APIs...(mode={mode})")
     candidates = []
 
     if mode == "out_and_back":

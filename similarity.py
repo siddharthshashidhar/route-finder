@@ -28,3 +28,6 @@ def rank_candidates(target_fp, candidates):
     scored = [(c, similarity_score(target_fp, c["fingerprint"])) for c in candidates]
     scored.sort(key=lambda pair: pair[1])
     return scored
+
+def score_to_percent(score, k=10):
+    return round(100 / (1 + score / k), 1)
