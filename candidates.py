@@ -41,18 +41,43 @@ def compute_route(origin, waypoints, destination):
     return resp.json()
 
 
-def get_elevation_profile_from_polyline(encoded_polyline, samples=200):
+def get_elevation_profile_from_polyline(encoded_polyline, samples=200, max_chunk_points=100):
+    """Sample elevation along a route, splitting into multiple requests
+    if the route has too many points for a single Elevation API call."""
+    points = polyline.decode(encoded_polyline)
+    total_points = len(points)
+
+    if total_points <= max_chunk_points:
+        return _fetch_elevation_chunk(points, samples)
+
+    n_chunks = (total_points // max_chunk_points) + 1
+    chunk_size = total_points // n_chunks
+    elevations = []
+
+    for i in range(n_chunks):
+        start = i * chunk_size
+        end = start + chunk_size if i < n_chunks - 1 else total_points
+        chunk_points = points[start:end]
+        if len(chunk_points) < 2:
+            continue
+        chunk_samples = max(2, samples // n_chunks)
+        elevations.extend(_fetch_elevation_chunk(chunk_points, chunk_samples))
+
+    return elevations
+
+
+def _fetch_elevation_chunk(points, samples):
+    path_str = "|".join(f"{lat},{lon}" for lat, lon in points)
     url = "https://maps.googleapis.com/maps/api/elevation/json"
-    params = {
-        "path": f"enc:{encoded_polyline}",
-        "samples": samples,
-        "key": API_KEY,
-    }
+    params = {"path": path_str, "samples": samples, "key": API_KEY}
     resp = requests.get(url, params=params)
     resp.raise_for_status()
     data = resp.json()
     if data["status"] != "OK":
-        raise RuntimeError(f"Elevation API error: {data['status']}")
+        raise RuntimeError(
+            f"Elevation API error: {data['status']} — "
+            f"{data.get('error_message', 'no further details')}"
+        )
     return [r["elevation"] for r in data["results"]]
 
 def decode_route(route_response):

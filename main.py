@@ -11,7 +11,7 @@ from plot import plot_comparison
 
 
 # 1. Build fingerprint from your uploaded route
-uploaded_points = read_gpx_file("Bengaluru_10k_Challenge_2026.gpx")
+uploaded_points = read_gpx_file("Bangalore_Run20260726054657.gpx")
 target_fp = build_fingerprint(uploaded_points)
 shape=classify_route_shape(uploaded_points)
 print(f"Target route: {target_fp['total_distance_km']} km, gain {target_fp['total_gain_m']}m, shape {shape}")
