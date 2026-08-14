@@ -15,6 +15,7 @@ from utils import route_to_maps_url, build_gpx_string
 DAILY_LIMIT = 100
 
 st.set_page_config(page_title="Route Finder", layout="wide")
+st.write(f"User calls made - {get_usage_count()}")
 st.title("Route Finder")
 st.write("Upload a GPX file from a race or run, and find similar road-running routes near a location.")
 
