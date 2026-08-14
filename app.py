@@ -96,8 +96,8 @@ if uploaded_file and st.button("Find similar routes", type="primary"):
     for i, (c, score) in enumerate(ranked[:3]):
         fp = c["fingerprint"]
         similarity_pct=score_to_percent(score)
-        st.markdown(f"### #{i+1} — Similarity - %")
-        st.write(f"{fp['total_distance_km']} km · gain {fp['total_gain_m']}m · loss {fp['total_loss_m']}m")
+        st.markdown(f"### #{i+1} — Similarity {similarity_pct} %")
+        st.write(f" - km · gain {fp['total_gain_m']}m · loss {fp['total_loss_m']}m")
         st.markdown(f"[Open route in Google Maps]({route_to_maps_url(c['path_points'])})")
         gpx_str = build_gpx_string(c["path_points"], c["elevations"])
         st.download_button(f"Download GPX #{i+1}", gpx_str, file_name=f"match_{i+1}.gpx", key=f"dl_{i}")
